@@ -25,10 +25,10 @@ jobs:
       - name: Download Gradle wrapper JAR
         run: |
           mkdir -p gradle/wrapper
-          curl -fsSL "https://services.gradle.org/distributions/gradle-8.7-bin.zip" \
-            -o /tmp/gradle-8.7-bin.zip
-          unzip -q /tmp/gradle-8.7-bin.zip -d /tmp/gradle-dist
-          /tmp/gradle-dist/gradle-8.7/bin/gradle wrapper --gradle-version 8.7 \
+          curl -fsSL "https://services.gradle.org/distributions/gradle-8.9-bin.zip" \
+            -o /tmp/gradle-8.9-bin.zip
+          unzip -q /tmp/gradle-8.9-bin.zip -d /tmp/gradle-dist
+          /tmp/gradle-dist/gradle-8.9/bin/gradle wrapper --gradle-version 8.9 \
             --distribution-type bin
           chmod +x gradlew
 
