@@ -22,8 +22,15 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Make gradlew executable
-        run: chmod +x gradlew
+      - name: Download Gradle wrapper JAR
+        run: |
+          mkdir -p gradle/wrapper
+          curl -fsSL "https://services.gradle.org/distributions/gradle-8.7-bin.zip" \
+            -o /tmp/gradle-8.7-bin.zip
+          unzip -q /tmp/gradle-8.7-bin.zip -d /tmp/gradle-dist
+          /tmp/gradle-dist/gradle-8.7/bin/gradle wrapper --gradle-version 8.7 \
+            --distribution-type bin
+          chmod +x gradlew
 
       - name: Extract version from tag
         id: version
