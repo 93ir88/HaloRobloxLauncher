@@ -18,77 +18,85 @@ private val json = Json {
 private val http = OkHttpClient.Builder()
     .connectTimeout(15, TimeUnit.SECONDS)
     .readTimeout(30, TimeUnit.SECONDS)
-    .addInterceptor(HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.NONE
-    })
     .build()
 
 private suspend fun get(url: String): String = withContext(Dispatchers.IO) {
-    val req  = Request.Builder().url(url)
-        .header("User-Agent", "HaloRobloxLauncher/1.0 Android")
+    val req = Request.Builder()
+        .url(url)
+        .header("User-Agent", "Roblox/Android HaloLauncher/1.0")
+        .header("Accept", "application/json")
         .build()
     http.newCall(req).execute().use { resp ->
         if (!resp.isSuccessful) error("HTTP ${resp.code}: $url")
-        resp.body?.string() ?: error("Empty body: $url")
+        resp.body?.string() ?: error("Empty body")
     }
 }
 
 object RobloxApi {
 
-    // ── Games list ──────────────────────────────────────────────────────────
+    // ── Games ──────────────────────────────────────────────────────────────
 
+    /** Popular / default chart — no auth needed */
     suspend fun getPopularGames(maxRows: Int = 30): GamesListResponse {
-        val url = "https://games.roblox.com/v1/games/list" +
-            "?model.sortToken=" +
-            "&model.gameFilter=default" +
-            "&model.timeFilter=0" +
-            "&model.genreFilter=1" +
-            "&model.maxRows=$maxRows" +
-            "&model.isPaginatedRequest=false"
+        val url = buildString {
+            append("https://games.roblox.com/v1/games/list")
+            append("?model.maxRows=$maxRows")
+            append("&model.isPaginatedRequest=false")
+        }
         return json.decodeFromString(get(url))
     }
 
-    suspend fun getFeaturedGames(maxRows: Int = 10): GamesListResponse {
-        val url = "https://games.roblox.com/v1/games/list" +
-            "?model.sortToken=" +
-            "&model.gameFilter=featured" +
-            "&model.timeFilter=0" +
-            "&model.genreFilter=1" +
-            "&model.maxRows=$maxRows" +
-            "&model.isPaginatedRequest=false"
-        return json.decodeFromString(get(url))
+    /** Top earning — different sort, gives a "featured-like" set */
+    suspend fun getTopGames(maxRows: Int = 12): GamesListResponse {
+        val url = buildString {
+            append("https://games.roblox.com/v1/games/list")
+            append("?model.maxRows=$maxRows")
+            append("&model.isPaginatedRequest=false")
+            append("&model.sortOrder=2") // Top Earning
+        }
+        return runCatching { json.decodeFromString<GamesListResponse>(get(url)) }
+            .getOrDefault(GamesListResponse())
     }
 
+    /** Search by keyword */
     suspend fun searchGames(query: String, maxRows: Int = 30): GamesListResponse {
         val encoded = java.net.URLEncoder.encode(query, "UTF-8")
-        val url = "https://games.roblox.com/v1/games/list" +
-            "?model.keyword=$encoded" +
-            "&model.maxRows=$maxRows" +
-            "&model.isPaginatedRequest=false"
+        val url = buildString {
+            append("https://games.roblox.com/v1/games/list")
+            append("?model.keyword=$encoded")
+            append("&model.maxRows=$maxRows")
+            append("&model.isPaginatedRequest=false")
+        }
         return json.decodeFromString(get(url))
     }
 
-    // ── Thumbnails ──────────────────────────────────────────────────────────
+    // ── Thumbnails ─────────────────────────────────────────────────────────
 
     suspend fun getThumbnails(universeIds: List<Long>): ThumbnailsResponse {
         if (universeIds.isEmpty()) return ThumbnailsResponse()
         val ids = universeIds.joinToString(",")
-        val url = "https://thumbnails.roblox.com/v1/games/multiget/thumbnails" +
-            "?universeIds=$ids" +
-            "&countPerUniverse=1" +
-            "&defaults=true" +
-            "&size=768x432" +
-            "&format=Webp" +
-            "&isCircular=false"
-        return json.decodeFromString(get(url))
+        val url = buildString {
+            append("https://thumbnails.roblox.com/v1/games/multiget/thumbnails")
+            append("?universeIds=$ids")
+            append("&countPerUniverse=1")
+            append("&defaults=true")
+            append("&size=768x432")
+            append("&format=Webp")
+            append("&isCircular=false")
+        }
+        return runCatching { json.decodeFromString<ThumbnailsResponse>(get(url)) }
+            .getOrDefault(ThumbnailsResponse())
     }
 
-    // ── Game detail ─────────────────────────────────────────────────────────
+    // ── Game detail ────────────────────────────────────────────────────────
 
     suspend fun getGameDetails(universeIds: List<Long>): GameDetailsResponse {
         if (universeIds.isEmpty()) return GameDetailsResponse()
         val ids = universeIds.joinToString(",")
-        val url = "https://games.roblox.com/v1/games?universeIds=$ids"
-        return json.decodeFromString(get(url))
+        return runCatching {
+            json.decodeFromString<GameDetailsResponse>(
+                get("https://games.roblox.com/v1/games?universeIds=$ids")
+            )
+        }.getOrDefault(GameDetailsResponse())
     }
 }

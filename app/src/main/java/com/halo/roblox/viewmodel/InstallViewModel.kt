@@ -10,8 +10,8 @@ import kotlinx.coroutines.launch
 
 sealed class InstallState {
     object Idle        : InstallState()
-    object Downloading : InstallState()
-    object Installing  : InstallState()
+    object Extracting  : InstallState()   // copying from assets → cache
+    object Installing  : InstallState()   // Android installer prompt
     object Done        : InstallState()
     data class Error(val msg: String) : InstallState()
 }
@@ -32,23 +32,30 @@ class InstallViewModel(app: Application) : AndroidViewModel(app) {
     init { refresh() }
 
     fun refresh() {
-        val app  = getApplication<Application>()
-        val inst = GameLauncher.isInstalled(app)
-        _state.update { it.copy(
-            installed    = inst,
-            version      = if (inst) GameLauncher.installedVersion(app) else "",
-            installState = InstallState.Idle
-        )}
+        val ctx  = getApplication<Application>()
+        val inst = GameLauncher.isInstalled(ctx)
+        _state.update {
+            it.copy(
+                installed    = inst,
+                version      = if (inst) GameLauncher.installedVersion(ctx) else "",
+                installState = InstallState.Idle
+            )
+        }
     }
 
-    fun downloadAndInstall() {
+    /** Extract bundled APK from assets then trigger installer */
+    fun installBundled() {
         viewModelScope.launch {
-            _state.update { it.copy(installState = InstallState.Downloading, progress = 0f) }
-            apk.download(
-                onProgress = { p -> _state.update { it.copy(progress = p) } },
-                onSuccess  = { file ->
+            _state.update { it.copy(installState = InstallState.Extracting, progress = 0f) }
+            apk.extractFromAssets(
+                onProgress = { p ->
+                    _state.update { it.copy(progress = p) }
+                },
+                onSuccess = { file ->
                     _state.update { it.copy(installState = InstallState.Installing) }
                     apk.install(file)
+                    // Refresh after a short delay to pick up install result
+                    kotlinx.coroutines.delay(3000)
                     refresh()
                 },
                 onError = { msg ->

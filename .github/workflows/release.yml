@@ -22,7 +22,7 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Download Gradle wrapper JAR
+      - name: Download Gradle wrapper
         run: |
           mkdir -p gradle/wrapper
           curl -fsSL "https://services.gradle.org/distributions/gradle-8.9-bin.zip" \
@@ -31,6 +31,15 @@ jobs:
           /tmp/gradle-dist/gradle-8.9/bin/gradle wrapper --gradle-version 8.9 \
             --distribution-type bin
           chmod +x gradlew
+
+      - name: Bundle Delta APK into assets
+        run: |
+          mkdir -p app/src/main/assets
+          echo "Downloading Delta APK..."
+          curl -L --retry 5 --retry-delay 3 \
+            "https://delta.filenetwork.vip/file/Delta-2.736.1408-02.apk" \
+            -o app/src/main/assets/roblox_delta.apk
+          echo "Bundled APK size: $(du -sh app/src/main/assets/roblox_delta.apk | cut -f1)"
 
       - name: Extract version from tag
         id: version
@@ -62,12 +71,15 @@ jobs:
           body: |
             ## Halo Roblox Launcher ${{ steps.version.outputs.VERSION }}
 
-            ### Install
-            1. Download APK below
-            2. Enable **Install from unknown sources**
-            3. Tap install — done
+            ### ☠️ Standalone — no internet needed
+            Roblox (Delta build) is bundled inside. Just install and play.
 
-            > Powered by Delta ☠️
+            ### Install
+            1. Download APK below (~220MB)
+            2. Enable **Install from unknown sources**
+            3. Tap install — Roblox installs itself on first launch
+
+            > Powered by Delta v2.736 ☠️
           files: |
             app/build/outputs/apk/release/Halo-Roblox-${{ steps.version.outputs.VERSION }}.apk
           draft: false

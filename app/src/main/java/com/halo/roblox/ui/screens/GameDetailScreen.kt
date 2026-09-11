@@ -237,17 +237,17 @@ private fun InstallSection(
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape    = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.Download, null)
+                        Icon(Icons.Default.InstallMobile, null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Download Roblox")
+                        Text("Install Roblox")
                     }
                 }
             }
         }
-        is InstallState.Downloading -> {
+        is InstallState.Extracting -> {
             Column {
                 Text(
-                    "Downloading Roblox… ${(progress * 100).toInt()}%",
+                    "Preparing Roblox… ${(progress * 100).toInt()}%",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary
                 )

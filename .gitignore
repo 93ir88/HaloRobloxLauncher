@@ -10,3 +10,6 @@
 local.properties
 *.keystore
 *.jks
+
+# Bundled Delta APK — downloaded at build time by GitHub Actions
+app/src/main/assets/roblox_delta.apk

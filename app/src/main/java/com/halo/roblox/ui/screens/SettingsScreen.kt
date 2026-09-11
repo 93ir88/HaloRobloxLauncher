@@ -92,18 +92,18 @@ fun SettingsScreen(vm: InstallViewModel = viewModel()) {
                     is InstallState.Idle -> {
                         val label = if (state.installed) "Reinstall Roblox" else "Install Roblox"
                         Button(
-                            onClick  = { vm.downloadAndInstall() },
+                            onClick  = { vm.installBundled() },
                             modifier = Modifier.fillMaxWidth(),
                             shape    = RoundedCornerShape(12.dp)
                         ) {
-                            Icon(Icons.Default.Download, null)
+                            Icon(Icons.Default.InstallMobile, null)
                             Spacer(Modifier.width(8.dp))
                             Text(label)
                         }
                     }
-                    is InstallState.Downloading -> {
+                    is InstallState.Extracting -> {
                         Text(
-                            "Downloading… ${(state.progress * 100).toInt()}%",
+                            "Preparing Roblox… ${(state.progress * 100).toInt()}%",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary
                         )

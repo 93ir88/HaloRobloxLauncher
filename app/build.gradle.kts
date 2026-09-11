@@ -40,6 +40,13 @@ android {
 
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+        // Don't compress the bundled APK — keeps it extractable at runtime
+        jniLibs { useLegacyPackaging = false }
+    }
+
+    // Prevent Gradle from compressing the bundled APK asset
+    androidResources {
+        noCompress += "apk"
     }
 }
 
