@@ -1,7 +1,8 @@
 package com.halo.roblox.ui.screens
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,10 +11,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -29,44 +31,55 @@ fun HomeScreen(
 ) {
     val state   by vm.state.collectAsStateWithLifecycle()
     val primary = MaterialTheme.colorScheme.primary
+    val bg      = MaterialTheme.colorScheme.background
 
-    val inf = rememberInfiniteTransition(label = "bg")
-    val shift by inf.animateFloat(
-        initialValue  = 0f,
-        targetValue   = 1f,
-        animationSpec = infiniteRepeatable(tween(8000), RepeatMode.Reverse),
-        label         = "shift"
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .drawBehind {
-                drawCircle(
-                    brush  = Brush.radialGradient(
-                        colors = listOf(primary.copy(alpha = 0.15f), Color.Transparent),
-                        center = Offset(size.width * (0.2f + shift * 0.6f), size.height * 0.15f),
-                        radius = size.minDimension * 0.8f
-                    ),
-                    radius = size.minDimension * 0.8f
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Animated gradient blob — pure Compose, no drawBehind
+        val inf = rememberInfiniteTransition(label = "blob")
+        val alpha by inf.animateFloat(
+            initialValue  = 0.08f,
+            targetValue   = 0.18f,
+            animationSpec = infiniteRepeatable(
+                animation  = tween(4000, easing = EaseInOutSine),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "blobAlpha"
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(320.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors  = listOf(primary.copy(alpha = alpha), Color.Transparent),
+                        radius  = 900f
+                    )
                 )
-            }
-    ) {
+        )
+
         when {
             state.isLoading -> LoadingScreen()
-            state.error != null -> ErrorScreen(msg = state.error!!, onRetry = { vm.load() })
+            state.error != null -> ErrorScreen(
+                msg     = state.error!!,
+                onRetry = { vm.load() }
+            )
             else -> {
-                LazyColumn(
-                    contentPadding = PaddingValues(bottom = 24.dp)
-                ) {
+                LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+
                     // Header
                     item {
-                        Column(modifier = Modifier.padding(start = 20.dp, top = 52.dp, bottom = 8.dp)) {
+                        Column(
+                            modifier = Modifier.padding(
+                                start  = 20.dp,
+                                top    = 52.dp,
+                                bottom = 8.dp
+                            )
+                        ) {
                             Text(
-                                text       = "☠️ HALO",
-                                style      = MaterialTheme.typography.headlineLarge,
-                                fontWeight = FontWeight.ExtraBold,
-                                color      = MaterialTheme.colorScheme.primary,
+                                text          = "☠️ HALO",
+                                style         = MaterialTheme.typography.headlineLarge,
+                                fontWeight    = FontWeight.ExtraBold,
+                                color         = MaterialTheme.colorScheme.primary,
                                 letterSpacing = 4.sp
                             )
                             Text(
@@ -77,31 +90,30 @@ fun HomeScreen(
                         }
                     }
 
-                    // Featured hero carousel
+                    // Featured carousel
                     if (state.featured.isNotEmpty()) {
-                        item {
-                            SectionHeader("Featured")
-                        }
+                        item { SectionHeader("Featured") }
                         item {
                             LazyRow(
-                                contentPadding    = PaddingValues(horizontal = 16.dp),
+                                contentPadding        = PaddingValues(horizontal = 16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 items(state.featured) { game ->
-                                    FeaturedCard(game = game, onClick = { onGameClick(game) })
+                                    FeaturedCard(
+                                        game    = game,
+                                        onClick = { onGameClick(game) }
+                                    )
                                 }
                             }
                         }
                         item { Spacer(Modifier.height(24.dp)) }
                     }
 
-                    // Popular section header
+                    // Popular horizontal row
                     item { SectionHeader("Popular Right Now") }
-
-                    // Popular horizontal scroll
                     item {
                         LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            contentPadding        = PaddingValues(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             items(state.popular.take(15)) { game ->
@@ -116,7 +128,7 @@ fun HomeScreen(
                     item { Spacer(Modifier.height(24.dp)) }
                     item { SectionHeader("All Games") }
 
-                    // Full grid
+                    // 2-column grid
                     items(
                         items = state.popular.chunked(2),
                         key   = { row -> row.first().universeId }
@@ -132,7 +144,7 @@ fun HomeScreen(
                                     game     = game,
                                     onClick  = { onGameClick(game) },
                                     modifier = Modifier.weight(1f),
-                                    width    = 0.dp, // weight handles width
+                                    width    = 0.dp,
                                     height   = 110.dp
                                 )
                             }
@@ -162,25 +174,36 @@ private fun FeaturedCard(game: Game, onClick: () -> Unit) {
                 modifier           = Modifier.fillMaxSize()
             )
         } else {
-            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            )
         }
+
+        // Bottom gradient overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.9f))
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.88f))
                     )
                 )
         )
+
         Column(
-            modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(14.dp)
         ) {
             Text(
                 text       = game.name,
                 color      = Color.White,
                 style      = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines   = 1,
+                overflow   = TextOverflow.Ellipsis
             )
             Text(
                 text  = "${game.formattedPlayers} • ${game.creatorName}",
@@ -211,14 +234,19 @@ fun LoadingScreen() {
 @Composable
 fun ErrorScreen(msg: String, onRetry: () -> Unit) {
     Column(
-        modifier            = Modifier.fillMaxSize().padding(32.dp),
+        modifier            = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text("Something went wrong", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(8.dp))
-        Text(msg, style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+        Text(
+            text  = msg,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+        )
         Spacer(Modifier.height(24.dp))
         Button(onClick = onRetry) { Text("Retry") }
     }

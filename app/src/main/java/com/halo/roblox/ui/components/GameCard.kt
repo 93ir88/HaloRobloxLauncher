@@ -28,20 +28,20 @@ fun GameCard(
     width   : Dp = 180.dp,
     height  : Dp = 120.dp
 ) {
+    val widthMod = if (width == 0.dp) modifier else modifier.width(width)
+
     Box(
-        modifier = modifier
-            .width(width)
+        modifier = widthMod
             .height(height)
             .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
     ) {
-        // Thumbnail
         if (game.thumbnailUrl != null) {
             AsyncImage(
-                model             = game.thumbnailUrl,
+                model              = game.thumbnailUrl,
                 contentDescription = game.name,
-                contentScale      = ContentScale.Crop,
-                modifier          = Modifier.fillMaxSize()
+                contentScale       = ContentScale.Crop,
+                modifier           = Modifier.fillMaxSize()
             )
         } else {
             Box(
@@ -51,19 +51,21 @@ fun GameCard(
             )
         }
 
-        // Gradient overlay
+        // Gradient overlay bottom half
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)),
-                        startY = 0.3f * height.value * 3f
+                        colorStops = arrayOf(
+                            0.3f to Color.Transparent,
+                            1.0f to Color.Black.copy(alpha = 0.85f)
+                        )
                     )
                 )
         )
 
-        // Info
+        // Text info
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -95,7 +97,7 @@ fun GameListItem(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier
+        modifier          = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -109,10 +111,10 @@ fun GameListItem(
         ) {
             if (game.thumbnailUrl != null) {
                 AsyncImage(
-                    model             = game.thumbnailUrl,
+                    model              = game.thumbnailUrl,
                     contentDescription = game.name,
-                    contentScale      = ContentScale.Crop,
-                    modifier          = Modifier.fillMaxSize()
+                    contentScale       = ContentScale.Crop,
+                    modifier           = Modifier.fillMaxSize()
                 )
             }
         }
@@ -127,9 +129,9 @@ fun GameListItem(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text  = "${game.formattedPlayers} • ${game.creatorName}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                text     = "${game.formattedPlayers} • ${game.creatorName}",
+                style    = MaterialTheme.typography.bodySmall,
+                color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
