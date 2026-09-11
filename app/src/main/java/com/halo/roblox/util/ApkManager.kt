@@ -2,7 +2,6 @@ package com.halo.roblox.util
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import androidx.core.content.FileProvider
@@ -15,41 +14,17 @@ import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 
 const val APK_DOWNLOAD_URL = "https://delta.filenetwork.vip/file/Delta-2.736.1408-02.apk"
-const val ROBLOX_PACKAGE   = "com.roblox.client"
-const val APK_FILE_NAME    = "roblox_halo.apk"
-
-sealed class LaunchState {
-    object Idle        : LaunchState()
-    object Downloading : LaunchState()
-    object Installing  : LaunchState()
-    object Launching   : LaunchState()
-    object Error       : LaunchState()
-}
+const val APK_FILE_NAME    = "roblox_delta.apk"
 
 class ApkManager(private val ctx: Context) {
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(180, TimeUnit.SECONDS)
+        .readTimeout(300, TimeUnit.SECONDS)
         .build()
 
-    fun isInstalled(): Boolean = try {
-        ctx.packageManager.getPackageInfo(ROBLOX_PACKAGE, 0)
-        true
-    } catch (_: PackageManager.NameNotFoundException) { false }
-
-    fun installedVersion(): String = try {
-        ctx.packageManager.getPackageInfo(ROBLOX_PACKAGE, 0).versionName ?: "Unknown"
-    } catch (_: PackageManager.NameNotFoundException) { "Not installed" }
-
-    fun launch() {
-        ctx.packageManager.getLaunchIntentForPackage(ROBLOX_PACKAGE)
-            ?.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-            ?.let { ctx.startActivity(it) }
-    }
-
     suspend fun download(
-        onProgress : (Float) -> Unit,
+        onProgress : (Float)  -> Unit,
         onSuccess  : suspend (File) -> Unit,
         onError    : (String) -> Unit
     ) = withContext(Dispatchers.IO) {
@@ -66,7 +41,7 @@ class ApkManager(private val ctx: Context) {
             }
 
             val body = resp.body ?: run {
-                withContext(Dispatchers.Main) { onError("Empty body") }
+                withContext(Dispatchers.Main) { onError("Empty response") }
                 return@withContext
             }
 
@@ -76,14 +51,15 @@ class ApkManager(private val ctx: Context) {
             body.byteStream().use { input ->
                 FileOutputStream(outFile).use { out ->
                     val buf = ByteArray(8 * 1024)
-                    var read: Int
                     var loaded = 0L
+                    var read: Int
                     while (input.read(buf).also { read = it } != -1) {
                         out.write(buf, 0, read)
                         loaded += read
                         if (total > 0) {
-                            val pct = loaded.toFloat() / total
-                            withContext(Dispatchers.Main) { onProgress(pct) }
+                            withContext(Dispatchers.Main) {
+                                onProgress(loaded.toFloat() / total)
+                            }
                         }
                     }
                 }

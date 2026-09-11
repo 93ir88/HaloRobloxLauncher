@@ -30,35 +30,31 @@ private val DarkPalette = darkColorScheme(
     onErrorContainer   = Color(0xFFF9DEDC),
 )
 
+private val LightPalette = lightColorScheme(
+    primary            = Color(0xFF6A00C8),
+    onPrimary          = Color(0xFFFFFFFF),
+    primaryContainer   = Color(0xFFEDD6FF),
+    onPrimaryContainer = Color(0xFF22005D),
+    background         = Color(0xFFFFFBFE),
+    surface            = Color(0xFFFFFBFE),
+    onBackground       = Color(0xFF1C1B1F),
+    onSurface          = Color(0xFF1C1B1F),
+)
+
 val HaloTypography = Typography(
-    displayLarge = TextStyle(
-        fontFamily    = FontFamily.Default,
-        fontWeight    = FontWeight.ExtraBold,
-        fontSize      = 56.sp,
-        lineHeight    = 64.sp,
-        letterSpacing = (-0.5).sp
-    ),
-    headlineLarge = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize   = 32.sp,
-        lineHeight = 40.sp
-    ),
-    titleLarge = TextStyle(
-        fontWeight = FontWeight.Bold,
-        fontSize   = 22.sp,
-        lineHeight = 28.sp
-    ),
-    bodyLarge = TextStyle(
-        fontWeight    = FontWeight.Normal,
-        fontSize      = 16.sp,
-        lineHeight    = 24.sp,
-        letterSpacing = 0.5.sp
-    ),
-    labelLarge = TextStyle(
-        fontWeight = FontWeight.Medium,
-        fontSize   = 14.sp,
-        lineHeight = 20.sp
-    )
+    displayLarge   = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.ExtraBold,
+        fontSize = 56.sp, lineHeight = 64.sp, letterSpacing = (-0.5).sp),
+    headlineLarge  = TextStyle(fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 40.sp),
+    headlineMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 34.sp),
+    titleLarge     = TextStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp),
+    titleMedium    = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 24.sp),
+    titleSmall     = TextStyle(fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp),
+    bodyLarge      = TextStyle(fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp, letterSpacing = 0.5.sp),
+    bodyMedium     = TextStyle(fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),
+    bodySmall      = TextStyle(fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 16.sp),
+    labelLarge     = TextStyle(fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp),
+    labelMedium    = TextStyle(fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp),
+    labelSmall     = TextStyle(fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 16.sp),
 )
 
 @Composable
@@ -71,7 +67,8 @@ fun HaloRobloxTheme(
             val ctx = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
         }
-        else -> DarkPalette
+        darkTheme -> DarkPalette
+        else      -> LightPalette
     }
 
     val view = LocalView.current
