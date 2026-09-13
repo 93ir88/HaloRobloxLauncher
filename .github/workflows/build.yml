@@ -27,26 +27,50 @@ jobs:
           curl -fsSL \
             "https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool" \
             -o apktool && chmod +x apktool
-          echo "apktool $(java -jar apktool.jar --version)" 
+          echo "apktool ready"
 
       - name: Download Delta APK
         run: |
-          echo "Downloading Delta APK …"
-          curl -L --retry 5 --retry-delay 3 \
-            "https://delta.filenetwork.vip/file/Delta-2.736.1408-02.apk" \
+          echo "Downloading Delta APK with browser headers..."
+
+          curl -L \
+            --retry 5 --retry-delay 5 \
+            --max-time 600 \
+            -A "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.230 Mobile Safari/537.36" \
+            -H "Accept: application/octet-stream,application/vnd.android.package-archive,*/*" \
+            -H "Accept-Language: en-US,en;q=0.9" \
+            -H "Connection: keep-alive" \
+            "https://download2447.mediafire.com/aitsewkf8klg_J0V2qdGTb_ctax3XciEiqB9h12c6Aj4VhD5mkUkjv4u2rU-hQSGWRUdYBRnXh9MAugl9aA2YJKhsg5NZWYQLqgr4auH5Akd91OpQm9HzeFKQlqTgBKxfE1gNihNcPaH8atatCdAb6B-lAzGEJ-KasoOdckoESnhiX4/tom870kvtc5a3sg/Delta-2.736.1408-02.apk" \
             -o delta.apk
-          echo "Downloaded: $(du -sh delta.apk | cut -f1)"
+
+          # Verify it's actually an APK (ZIP file) not HTML
+          FILETYPE=$(file -b delta.apk | head -c 30)
+          SIZE=$(stat -c%s delta.apk)
+          echo "Downloaded: $(du -sh delta.apk | cut -f1) — type: $FILETYPE"
+
+          if echo "$FILETYPE" | grep -qi "html\|text\|ASCII"; then
+            echo "::error::Got HTML instead of APK — server blocked the download"
+            echo "Response content:"
+            head -5 delta.apk
+            exit 1
+          fi
+
+          if [ "$SIZE" -lt 10000000 ]; then
+            echo "::error::File too small (${SIZE} bytes) — download likely failed"
+            exit 1
+          fi
+
+          echo "APK verified OK — ${SIZE} bytes"
 
       - name: Decode APK with apktool
         run: |
           java -jar apktool.jar d delta.apk -o decoded --force
-          echo "Decoded OK — contents:"
-          ls decoded/
+          echo "Decoded — smali dirs: $(ls decoded | grep smali)"
 
       - name: Inject Halo launcher
         run: python3 patch/inject.py decoded patch
 
-      - name: Rebuild APK with apktool
+      - name: Rebuild APK
         run: |
           java -jar apktool.jar b decoded -o halo_unsigned.apk --force-all
           echo "Built: $(du -sh halo_unsigned.apk | cut -f1)"
@@ -54,33 +78,22 @@ jobs:
       - name: Generate debug keystore
         run: |
           keytool -genkeypair -v \
-            -keystore debug.keystore \
-            -alias halo \
-            -keyalg RSA -keysize 2048 \
-            -validity 10000 \
-            -storepass android \
-            -keypass android \
-            -dname "CN=Halo, OU=Launcher, O=Halo, L=Earth, S=Earth, C=US"
+            -keystore debug.keystore -alias halo \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Halo,OU=Dev,O=Halo,L=Earth,ST=Earth,C=US"
 
-      - name: Zipalign
+      - name: Zipalign + Sign
         run: |
           BTDIR="$ANDROID_SDK_ROOT/build-tools/$(ls $ANDROID_SDK_ROOT/build-tools | sort -V | tail -1)"
-          echo "Using build-tools: $BTDIR"
           $BTDIR/zipalign -v -p 4 halo_unsigned.apk halo_aligned.apk
-
-      - name: Sign APK
-        run: |
-          BTDIR="$ANDROID_SDK_ROOT/build-tools/$(ls $ANDROID_SDK_ROOT/build-tools | sort -V | tail -1)"
           $BTDIR/apksigner sign \
-            --ks debug.keystore \
-            --ks-key-alias halo \
-            --ks-pass pass:android \
-            --key-pass pass:android \
-            --out Halo-Roblox-debug.apk \
-            halo_aligned.apk
-          echo "Final APK: $(du -sh Halo-Roblox-debug.apk | cut -f1)"
+            --ks debug.keystore --ks-key-alias halo \
+            --ks-pass pass:android --key-pass pass:android \
+            --out Halo-Roblox-debug.apk halo_aligned.apk
+          echo "Final: $(du -sh Halo-Roblox-debug.apk | cut -f1)"
 
-      - name: Upload APK artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: Halo-Roblox-debug

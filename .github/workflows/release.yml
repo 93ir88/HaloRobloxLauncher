@@ -32,10 +32,30 @@ jobs:
 
       - name: Download Delta APK
         run: |
-          curl -L --retry 5 --retry-delay 3 \
-            "https://delta.filenetwork.vip/file/Delta-2.736.1408-02.apk" \
+          curl -L \
+            --retry 5 --retry-delay 5 \
+            --max-time 600 \
+            -A "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.230 Mobile Safari/537.36" \
+            -H "Accept: application/octet-stream,application/vnd.android.package-archive,*/*" \
+            -H "Accept-Language: en-US,en;q=0.9" \
+            -H "Connection: keep-alive" \
+            "https://download2447.mediafire.com/aitsewkf8klg_J0V2qdGTb_ctax3XciEiqB9h12c6Aj4VhD5mkUkjv4u2rU-hQSGWRUdYBRnXh9MAugl9aA2YJKhsg5NZWYQLqgr4auH5Akd91OpQm9HzeFKQlqTgBKxfE1gNihNcPaH8atatCdAb6B-lAzGEJ-KasoOdckoESnhiX4/tom870kvtc5a3sg/Delta-2.736.1408-02.apk" \
             -o delta.apk
-          echo "Downloaded: $(du -sh delta.apk | cut -f1)"
+
+          FILETYPE=$(file -b delta.apk | head -c 30)
+          SIZE=$(stat -c%s delta.apk)
+          echo "Downloaded: $(du -sh delta.apk | cut -f1) — type: $FILETYPE"
+
+          if echo "$FILETYPE" | grep -qi "html\|text\|ASCII"; then
+            echo "::error::Got HTML — hotlink blocked"
+            head -5 delta.apk
+            exit 1
+          fi
+
+          if [ "$SIZE" -lt 10000000 ]; then
+            echo "::error::Too small (${SIZE} bytes)"
+            exit 1
+          fi
 
       - name: Decode APK
         run: java -jar apktool.jar d delta.apk -o decoded --force
@@ -57,9 +77,7 @@ jobs:
             --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
             --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
             --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
-            --out "Halo-Roblox-${VERSION}.apk" \
-            halo_aligned.apk
-          echo "Final: $(du -sh Halo-Roblox-${VERSION}.apk | cut -f1)"
+            --out "Halo-Roblox-${VERSION}.apk" halo_aligned.apk
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Create GitHub Release
@@ -68,13 +86,11 @@ jobs:
           name: "☠️🥀 Halo Roblox ${{ env.VERSION }}"
           body: |
             ## Halo Roblox Launcher ${{ env.VERSION }}
-            Modified Delta APK — package `com.roblox.client` untouched.
+            Modified Delta APK — `com.roblox.client` package untouched.
 
             ### Install
-            1. Uninstall any existing Roblox first
-            2. Download APK below
+            1. Uninstall existing Roblox first
+            2. Download APK
             3. Enable **Install from unknown sources**
-            4. Install — done ☠️
+            4. Install ☠️
           files: Halo-Roblox-${{ env.VERSION }}.apk
-          draft: false
-          prerelease: false
