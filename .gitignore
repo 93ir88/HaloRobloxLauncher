@@ -1,15 +1,8 @@
-*.iml
-.gradle
-/local.properties
-/.idea
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+delta.apk
+decoded/
+halo_unsigned.apk
+halo_aligned.apk
 *.keystore
 *.jks
-
-# Bundled Delta APK — downloaded at build time by GitHub Actions
-app/src/main/assets/roblox_delta.apk
+__pycache__/
+*.pyc

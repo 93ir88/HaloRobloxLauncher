@@ -1,4 +1,0 @@
--keep class com.halo.roblox.** { *; }
--keepattributes *Annotation*
--dontwarn okhttp3.**
--dontwarn okio.**

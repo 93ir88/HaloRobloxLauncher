@@ -1,4 +1,4 @@
-name: Build Debug APK
+name: Build Halo APK
 
 on:
   push:
@@ -18,33 +18,71 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
 
-      - name: Download Gradle wrapper
+      - name: Download apktool
         run: |
-          mkdir -p gradle/wrapper
-          curl -fsSL "https://services.gradle.org/distributions/gradle-8.9-bin.zip" \
-            -o /tmp/gradle-8.9-bin.zip
-          unzip -q /tmp/gradle-8.9-bin.zip -d /tmp/gradle-dist
-          /tmp/gradle-dist/gradle-8.9/bin/gradle wrapper --gradle-version 8.9 \
-            --distribution-type bin
-          chmod +x gradlew
+          curl -fsSL \
+            "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" \
+            -o apktool.jar
+          curl -fsSL \
+            "https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool" \
+            -o apktool && chmod +x apktool
+          echo "apktool $(java -jar apktool.jar --version)" 
 
-      - name: Bundle Delta APK into assets
+      - name: Download Delta APK
         run: |
-          mkdir -p app/src/main/assets
-          echo "Downloading Delta APK..."
+          echo "Downloading Delta APK …"
           curl -L --retry 5 --retry-delay 3 \
             "https://delta.filenetwork.vip/file/Delta-2.736.1408-02.apk" \
-            -o app/src/main/assets/roblox_delta.apk
-          echo "Bundled APK size: $(du -sh app/src/main/assets/roblox_delta.apk | cut -f1)"
+            -o delta.apk
+          echo "Downloaded: $(du -sh delta.apk | cut -f1)"
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Decode APK with apktool
+        run: |
+          java -jar apktool.jar d delta.apk -o decoded --force
+          echo "Decoded OK — contents:"
+          ls decoded/
 
-      - name: Upload debug APK artifact
+      - name: Inject Halo launcher
+        run: python3 patch/inject.py decoded patch
+
+      - name: Rebuild APK with apktool
+        run: |
+          java -jar apktool.jar b decoded -o halo_unsigned.apk --force-all
+          echo "Built: $(du -sh halo_unsigned.apk | cut -f1)"
+
+      - name: Generate debug keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore debug.keystore \
+            -alias halo \
+            -keyalg RSA -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=Halo, OU=Launcher, O=Halo, L=Earth, S=Earth, C=US"
+
+      - name: Zipalign
+        run: |
+          BTDIR="$ANDROID_SDK_ROOT/build-tools/$(ls $ANDROID_SDK_ROOT/build-tools | sort -V | tail -1)"
+          echo "Using build-tools: $BTDIR"
+          $BTDIR/zipalign -v -p 4 halo_unsigned.apk halo_aligned.apk
+
+      - name: Sign APK
+        run: |
+          BTDIR="$ANDROID_SDK_ROOT/build-tools/$(ls $ANDROID_SDK_ROOT/build-tools | sort -V | tail -1)"
+          $BTDIR/apksigner sign \
+            --ks debug.keystore \
+            --ks-key-alias halo \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --out Halo-Roblox-debug.apk \
+            halo_aligned.apk
+          echo "Final APK: $(du -sh Halo-Roblox-debug.apk | cut -f1)"
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: halo-roblox-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: Halo-Roblox-debug
+          path: Halo-Roblox-debug.apk
           retention-days: 7

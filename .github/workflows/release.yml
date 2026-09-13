@@ -1,4 +1,4 @@
-name: Release Stable APK
+name: Release Halo APK
 
 on:
   push:
@@ -20,67 +20,61 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
 
-      - name: Download Gradle wrapper
+      - name: Download apktool
         run: |
-          mkdir -p gradle/wrapper
-          curl -fsSL "https://services.gradle.org/distributions/gradle-8.9-bin.zip" \
-            -o /tmp/gradle-8.9-bin.zip
-          unzip -q /tmp/gradle-8.9-bin.zip -d /tmp/gradle-dist
-          /tmp/gradle-dist/gradle-8.9/bin/gradle wrapper --gradle-version 8.9 \
-            --distribution-type bin
-          chmod +x gradlew
+          curl -fsSL \
+            "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" \
+            -o apktool.jar
+          curl -fsSL \
+            "https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool" \
+            -o apktool && chmod +x apktool
 
-      - name: Bundle Delta APK into assets
+      - name: Download Delta APK
         run: |
-          mkdir -p app/src/main/assets
-          echo "Downloading Delta APK..."
           curl -L --retry 5 --retry-delay 3 \
             "https://delta.filenetwork.vip/file/Delta-2.736.1408-02.apk" \
-            -o app/src/main/assets/roblox_delta.apk
-          echo "Bundled APK size: $(du -sh app/src/main/assets/roblox_delta.apk | cut -f1)"
+            -o delta.apk
+          echo "Downloaded: $(du -sh delta.apk | cut -f1)"
 
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      - name: Decode APK
+        run: java -jar apktool.jar d delta.apk -o decoded --force
 
-      - name: Build release APK
-        run: ./gradlew assembleRelease --stacktrace
+      - name: Inject Halo launcher
+        run: python3 patch/inject.py decoded patch
 
-      - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
-        id: sign
-        with:
-          releaseDirectory: app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY_BASE64 }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
+      - name: Rebuild APK
+        run: java -jar apktool.jar b decoded -o halo_unsigned.apk --force-all
 
-      - name: Rename signed APK
+      - name: Sign with release keystore
         run: |
-          mv "${{ steps.sign.outputs.signedReleaseFile }}" \
-             "app/build/outputs/apk/release/Halo-Roblox-${{ steps.version.outputs.VERSION }}.apk"
+          echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 -d > release.keystore
+          BTDIR="$ANDROID_SDK_ROOT/build-tools/$(ls $ANDROID_SDK_ROOT/build-tools | sort -V | tail -1)"
+          $BTDIR/zipalign -v -p 4 halo_unsigned.apk halo_aligned.apk
+          VERSION="${GITHUB_REF#refs/tags/}"
+          $BTDIR/apksigner sign \
+            --ks release.keystore \
+            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+            --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
+            --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
+            --out "Halo-Roblox-${VERSION}.apk" \
+            halo_aligned.apk
+          echo "Final: $(du -sh Halo-Roblox-${VERSION}.apk | cut -f1)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "☠️🥀 Halo Roblox Launcher ${{ steps.version.outputs.VERSION }}"
-          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: "☠️🥀 Halo Roblox ${{ env.VERSION }}"
           body: |
-            ## Halo Roblox Launcher ${{ steps.version.outputs.VERSION }}
-
-            ### ☠️ Standalone — no internet needed
-            Roblox (Delta build) is bundled inside. Just install and play.
+            ## Halo Roblox Launcher ${{ env.VERSION }}
+            Modified Delta APK — package `com.roblox.client` untouched.
 
             ### Install
-            1. Download APK below (~220MB)
-            2. Enable **Install from unknown sources**
-            3. Tap install — Roblox installs itself on first launch
-
-            > Powered by Delta v2.736 ☠️
-          files: |
-            app/build/outputs/apk/release/Halo-Roblox-${{ steps.version.outputs.VERSION }}.apk
+            1. Uninstall any existing Roblox first
+            2. Download APK below
+            3. Enable **Install from unknown sources**
+            4. Install — done ☠️
+          files: Halo-Roblox-${{ env.VERSION }}.apk
           draft: false
           prerelease: false

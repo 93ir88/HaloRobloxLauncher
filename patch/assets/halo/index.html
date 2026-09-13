@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Halo</title>
+<style>
+:root {
+  --bg:        #09090f;
+  --surface:   #131320;
+  --surface2:  #1c1c2e;
+  --primary:   #cfafff;
+  --primary-d: #9b59ff;
+  --text:      #e6e1e5;
+  --text-dim:  rgba(230,225,229,.55);
+  --radius:    16px;
+  --tab-h:     60px;
+  --top-h:     68px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:-apple-system,'Roboto',sans-serif;font-size:15px}
+
+/* ── Layout ── */
+#app{display:flex;flex-direction:column;height:100%}
+
+/* ── Top bar ── */
+#topbar{
+  height:var(--top-h);
+  padding:0 20px;
+  display:flex;align-items:flex-end;padding-bottom:12px;
+  flex-shrink:0;
+  background:linear-gradient(to bottom,rgba(9,9,15,1),rgba(9,9,15,.92));
+  position:relative;z-index:10;
+}
+#topbar h1{
+  font-size:26px;font-weight:900;letter-spacing:3px;
+  background:linear-gradient(135deg,var(--primary),#fff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+#topbar span{font-size:13px;color:var(--text-dim);margin-left:8px;font-weight:400;
+  -webkit-text-fill-color:var(--text-dim)}
+
+/* ── Pages ── */
+#pages{flex:1;overflow:hidden;position:relative}
+.page{
+  position:absolute;inset:0;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  opacity:0;pointer-events:none;
+  transition:opacity .2s ease;
+  padding-bottom:calc(var(--tab-h) + 8px);
+}
+.page.active{opacity:1;pointer-events:auto}
+
+/* ── Bottom Tab Bar ── */
+#tabs{
+  height:var(--tab-h);display:flex;flex-shrink:0;
+  background:var(--surface);
+  border-top:1px solid rgba(255,255,255,.07);
+}
+.tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;cursor:pointer;
+  color:var(--text-dim);transition:color .2s;
+  font-size:11px;font-weight:500;
+}
+.tab svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+.tab.active{color:var(--primary)}
+
+/* ── Section headers ── */
+.section-header{
+  padding:20px 16px 10px;
+  font-size:18px;font-weight:700;
+}
+
+/* ── Featured carousel ── */
+#featured-scroll{
+  display:flex;gap:12px;
+  overflow-x:auto;padding:0 16px 8px;
+  scrollbar-width:none;
+  scroll-snap-type:x mandatory;
+}
+#featured-scroll::-webkit-scrollbar{display:none}
+.featured-card{
+  flex-shrink:0;width:280px;height:168px;
+  border-radius:20px;overflow:hidden;
+  position:relative;cursor:pointer;
+  scroll-snap-align:start;
+  background:var(--surface2);
+  transition:transform .15s;
+}
+.featured-card:active{transform:scale(.97)}
+.featured-card img{width:100%;height:100%;object-fit:cover}
+.featured-card .overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(0,0,0,.9) 0%,transparent 55%);
+  display:flex;flex-direction:column;justify-content:flex-end;padding:14px;
+}
+.featured-card .name{font-size:14px;font-weight:700;line-height:1.3}
+.featured-card .meta{font-size:11px;color:rgba(255,255,255,.65);margin-top:3px}
+
+/* ── Game grid ── */
+.game-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;padding:0 12px;
+}
+.game-card{
+  border-radius:var(--radius);overflow:hidden;
+  background:var(--surface2);
+  position:relative;cursor:pointer;
+  aspect-ratio:16/10;
+  transition:transform .15s;
+}
+.game-card:active{transform:scale(.97)}
+.game-card img{width:100%;height:100%;object-fit:cover}
+.game-card .info{
+  position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(0,0,0,.88) 0%,transparent 50%);
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:8px;
+}
+.game-card .name{font-size:12px;font-weight:700;line-height:1.2;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.game-card .players{font-size:10px;color:rgba(255,255,255,.65);margin-top:2px}
+
+/* ── Skeleton loader ── */
+.skeleton{
+  background:linear-gradient(90deg,var(--surface2) 25%,var(--surface) 50%,var(--surface2) 75%);
+  background-size:200% 100%;
+  animation:shimmer 1.4s infinite;
+  border-radius:var(--radius);
+}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-featured{width:280px;height:168px;flex-shrink:0;border-radius:20px}
+.skel-card{aspect-ratio:16/10}
+
+/* ── Search ── */
+#search-wrap{padding:14px 16px 6px}
+#search-input{
+  width:100%;background:var(--surface2);
+  border:1.5px solid rgba(255,255,255,.1);
+  border-radius:50px;padding:12px 20px;
+  color:var(--text);font-size:15px;outline:none;
+  transition:border-color .2s;
+}
+#search-input:focus{border-color:var(--primary-d)}
+#search-input::placeholder{color:var(--text-dim)}
+
+/* ── Game list items (discover) ── */
+.game-list-item{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 16px;cursor:pointer;
+  transition:background .15s;
+}
+.game-list-item:active{background:var(--surface2)}
+.game-list-thumb{
+  width:80px;height:54px;border-radius:10px;
+  object-fit:cover;background:var(--surface2);
+  flex-shrink:0;
+}
+.game-list-thumb.no-img{background:var(--surface2)}
+.game-list-info{flex:1;min-width:0}
+.game-list-name{font-size:14px;font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.game-list-meta{font-size:12px;color:var(--text-dim);margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.game-list-divider{height:1px;background:rgba(255,255,255,.06);margin-left:108px}
+
+/* ── Game detail overlay ── */
+#detail-overlay{
+  position:fixed;inset:0;z-index:100;
+  background:var(--bg);
+  transform:translateY(100%);
+  transition:transform .3s cubic-bezier(.4,0,.2,1);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  display:flex;flex-direction:column;
+}
+#detail-overlay.open{transform:translateY(0)}
+#detail-hero{width:100%;height:220px;object-fit:cover;background:var(--surface2);flex-shrink:0}
+#detail-back{
+  position:fixed;top:0;left:0;
+  width:48px;height:48px;
+  margin:12px;
+  background:rgba(0,0,0,.55);
+  border-radius:50%;border:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;z-index:101;
+}
+#detail-back svg{width:20px;height:20px;stroke:#fff;stroke-width:2.5;fill:none}
+#detail-body{padding:20px;flex:1}
+#detail-name{font-size:24px;font-weight:900;line-height:1.2}
+#detail-creator{font-size:14px;color:var(--text-dim);margin-top:4px}
+#detail-chips{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.chip{
+  background:var(--surface2);border-radius:50px;
+  padding:6px 14px;font-size:12px;font-weight:500;
+  color:var(--text-dim);
+}
+.chip span{color:var(--primary);font-weight:700}
+#play-btn{
+  margin-top:22px;width:100%;padding:16px;
+  background:var(--primary);color:var(--on-primary, #3a0073);
+  border:none;border-radius:18px;
+  font-size:17px;font-weight:800;letter-spacing:.5px;
+  cursor:pointer;transition:opacity .15s,transform .1s;
+}
+#play-btn:active{opacity:.85;transform:scale(.98)}
+#detail-desc{margin-top:22px;font-size:14px;color:var(--text-dim);line-height:1.65}
+#detail-desc-title{font-size:16px;font-weight:700;margin-bottom:8px;color:var(--text)}
+
+/* ── Error state ── */
+.error-state{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:60px 32px;gap:14px;text-align:center;
+}
+.error-state p{color:var(--text-dim);font-size:14px}
+.retry-btn{
+  background:var(--primary);color:#3a0073;border:none;
+  border-radius:50px;padding:12px 28px;font-size:15px;font-weight:700;
+  cursor:pointer;
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Top Bar -->
+  <div id="topbar">
+    <h1>☠️ HALO</h1>
+    <span>Roblox Launcher</span>
+  </div>
+
+  <!-- Pages -->
+  <div id="pages">
+
+    <!-- HOME PAGE -->
+    <div class="page active" id="page-home">
+      <div class="section-header">Featured</div>
+      <div id="featured-scroll">
+        <div class="skeleton skel-featured"></div>
+        <div class="skeleton skel-featured"></div>
+        <div class="skeleton skel-featured"></div>
+      </div>
+      <div class="section-header" style="margin-top:16px">Popular Right Now</div>
+      <div class="game-grid" id="popular-grid">
+        <div class="skeleton skel-card"></div>
+        <div class="skeleton skel-card"></div>
+        <div class="skeleton skel-card"></div>
+        <div class="skeleton skel-card"></div>
+      </div>
+    </div>
+
+    <!-- DISCOVER PAGE -->
+    <div class="page" id="page-discover">
+      <div id="search-wrap">
+        <input id="search-input" type="search" placeholder="Search games…" autocomplete="off">
+      </div>
+      <div id="discover-list"></div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Tabs -->
+  <div id="tabs">
+    <div class="tab active" data-page="home" onclick="switchTab('home')">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </div>
+    <div class="tab" data-page="discover" onclick="switchTab('discover')">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Discover
+    </div>
+  </div>
+</div>
+
+<!-- Game Detail Overlay -->
+<div id="detail-overlay">
+  <button id="detail-back" onclick="closeDetail()">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <img id="detail-hero" src="" alt="">
+  <div id="detail-body">
+    <div id="detail-name"></div>
+    <div id="detail-creator"></div>
+    <div id="detail-chips"></div>
+    <button id="play-btn" onclick="playGame()">▶  Play Now</button>
+    <div id="detail-desc-title" style="display:none">About</div>
+    <div id="detail-desc"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── State ─────────────────────────────────────────────────────────────────
+const API_GAMES     = 'https://games.roblox.com/v1/games/list?model.maxRows=30&model.isPaginatedRequest=false';
+const API_TOP       = 'https://games.roblox.com/v1/games/list?model.maxRows=12&model.sortOrder=2&model.isPaginatedRequest=false';
+const API_THUMBS    = id => `https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=${id}&countPerUniverse=1&defaults=true&size=768x432&format=Webp&isCircular=false`;
+const API_DETAIL    = id => `https://games.roblox.com/v1/games?universeIds=${id}`;
+const API_SEARCH    = q  => `https://games.roblox.com/v1/games/list?model.keyword=${encodeURIComponent(q)}&model.maxRows=30&model.isPaginatedRequest=false`;
+
+let currentPlaceId  = null;
+let searchTimeout   = null;
+let discoverLoaded  = false;
+
+// ── Utils ─────────────────────────────────────────────────────────────────
+function fmt(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(1)+'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return ''+n;
+}
+
+async function apiFetch(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+async function fetchThumbs(ids) {
+  if (!ids.length) return {};
+  const data = await apiFetch(API_THUMBS(ids.join(',')));
+  const map = {};
+  (data.data || []).forEach(u => {
+    const t = (u.thumbnails || [])[0];
+    if (t && t.imageUrl) map[u.universeId] = t.imageUrl;
+  });
+  return map;
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelector('[data-page="' + name + '"]').classList.add('active');
+  if (name === 'discover' && !discoverLoaded) {
+    discoverLoaded = true;
+    loadDiscover();
+  }
+}
+
+// ── Home ──────────────────────────────────────────────────────────────────
+async function loadHome() {
+  try {
+    const [popular, top] = await Promise.all([
+      apiFetch(API_GAMES),
+      apiFetch(API_TOP).catch(() => ({ games: [] }))
+    ]);
+
+    const featuredGames = (top.games || []).slice(0, 8);
+    const popularGames  = (popular.games || []).slice(0, 30);
+
+    const allIds = [...new Set([
+      ...featuredGames.map(g => g.universeId),
+      ...popularGames.map(g => g.universeId)
+    ])];
+
+    const thumbMap = await fetchThumbs(allIds);
+
+    // Featured carousel
+    const scroll = document.getElementById('featured-scroll');
+    scroll.innerHTML = featuredGames.length
+      ? featuredGames.map(g => featuredCardHTML(g, thumbMap[g.universeId])).join('')
+      : popularGames.slice(0, 6).map(g => featuredCardHTML(g, thumbMap[g.universeId])).join('');
+
+    // Popular grid
+    const grid = document.getElementById('popular-grid');
+    grid.innerHTML = popularGames.map(g => gridCardHTML(g, thumbMap[g.universeId])).join('');
+
+  } catch (e) {
+    document.getElementById('popular-grid').innerHTML = `
+      <div class="error-state" style="grid-column:1/-1">
+        <p>Couldn't load games.<br>${e.message}</p>
+        <button class="retry-btn" onclick="loadHome()">Retry</button>
+      </div>`;
+  }
+}
+
+function featuredCardHTML(g, thumb) {
+  const img = thumb ? `<img src="${thumb}" alt="" loading="lazy">` :
+    `<div style="width:100%;height:100%;background:var(--surface2)"></div>`;
+  return `<div class="featured-card" onclick="openDetail(${g.universeId},${g.placeId})">
+    ${img}
+    <div class="overlay">
+      <div class="name">${esc(g.name)}</div>
+      <div class="meta">${fmt(g.playerCount)} playing · ${esc(g.creatorName)}</div>
+    </div>
+  </div>`;
+}
+
+function gridCardHTML(g, thumb) {
+  const img = thumb ? `<img src="${thumb}" alt="" loading="lazy">` : '';
+  return `<div class="game-card" onclick="openDetail(${g.universeId},${g.placeId})">
+    ${img}
+    <div class="info">
+      <div class="name">${esc(g.name)}</div>
+      <div class="players">${fmt(g.playerCount)} playing</div>
+    </div>
+  </div>`;
+}
+
+// ── Discover ──────────────────────────────────────────────────────────────
+async function loadDiscover(query) {
+  const list = document.getElementById('discover-list');
+  list.innerHTML = '<div class="error-state"><p>Loading…</p></div>';
+  try {
+    const url  = query ? API_SEARCH(query) : API_GAMES;
+    const data = await apiFetch(url);
+    const games = data.games || [];
+    if (!games.length) { list.innerHTML = '<div class="error-state"><p>No results.</p></div>'; return; }
+
+    const thumbMap = await fetchThumbs(games.map(g => g.universeId));
+    list.innerHTML = games.map((g, i) => `
+      <div class="game-list-item" onclick="openDetail(${g.universeId},${g.placeId})">
+        ${thumbMap[g.universeId]
+          ? `<img class="game-list-thumb" src="${thumbMap[g.universeId]}" loading="lazy">`
+          : `<div class="game-list-thumb no-img"></div>`}
+        <div class="game-list-info">
+          <div class="game-list-name">${esc(g.name)}</div>
+          <div class="game-list-meta">${fmt(g.playerCount)} playing · ${esc(g.creatorName)}</div>
+        </div>
+      </div>
+      ${i < games.length - 1 ? '<div class="game-list-divider"></div>' : ''}
+    `).join('');
+  } catch (e) {
+    list.innerHTML = `<div class="error-state"><p>${e.message}</p>
+      <button class="retry-btn" onclick="loadDiscover()">Retry</button></div>`;
+  }
+}
+
+document.getElementById('search-input').addEventListener('input', function() {
+  clearTimeout(searchTimeout);
+  const q = this.value.trim();
+  searchTimeout = setTimeout(() => loadDiscover(q || undefined), 420);
+});
+
+// ── Detail overlay ────────────────────────────────────────────────────────
+async function openDetail(universeId, placeId) {
+  currentPlaceId = String(placeId);
+  const overlay = document.getElementById('detail-overlay');
+
+  // Reset
+  document.getElementById('detail-hero').src = '';
+  document.getElementById('detail-name').textContent = 'Loading…';
+  document.getElementById('detail-creator').textContent = '';
+  document.getElementById('detail-chips').innerHTML = '';
+  document.getElementById('detail-desc').textContent = '';
+  document.getElementById('detail-desc-title').style.display = 'none';
+
+  overlay.classList.add('open');
+
+  try {
+    const [detail, thumbData] = await Promise.all([
+      apiFetch(API_DETAIL(universeId)),
+      fetchThumbs([universeId])
+    ]);
+
+    const g = (detail.data || [])[0];
+    if (!g) throw new Error('Not found');
+
+    const thumb = thumbData[universeId];
+    if (thumb) document.getElementById('detail-hero').src = thumb;
+
+    document.getElementById('detail-name').textContent    = g.name;
+    document.getElementById('detail-creator').textContent = 'by ' + (g.creator?.name || '');
+
+    const chips = [
+      g.playing  != null ? `<div class="chip"><span>${fmt(g.playing)}</span> playing</div>` : '',
+      g.visits   != null ? `<div class="chip"><span>${fmt(g.visits)}</span> visits</div>`   : '',
+      g.genre               ? `<div class="chip">${esc(g.genre)}</div>`                     : '',
+      g.maxPlayers          ? `<div class="chip">Max <span>${g.maxPlayers}</span></div>`    : '',
+    ].filter(Boolean).join('');
+    document.getElementById('detail-chips').innerHTML = chips;
+
+    if (g.description) {
+      document.getElementById('detail-desc-title').style.display = 'block';
+      document.getElementById('detail-desc').textContent = g.description;
+    }
+
+  } catch (e) {
+    document.getElementById('detail-name').textContent = 'Error loading game';
+    document.getElementById('detail-creator').textContent = e.message;
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('open');
+  currentPlaceId = null;
+}
+
+function playGame() {
+  if (!currentPlaceId) return;
+  if (window.Android && Android.launchGame) {
+    Android.launchGame(currentPlaceId);
+  } else {
+    window.location.href = 'roblox://placeId=' + currentPlaceId;
+  }
+}
+
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+loadHome();
+</script>
+</body>
+</html>

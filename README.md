@@ -1,20 +1,43 @@
 # ☠️🥀 Halo Roblox Launcher
 
-Material You Android launcher for Roblox — animated, clean, dark.
+Patches the Delta APK (`com.roblox.client`) to use Halo as its launcher UI.  
+Package name stays **untouched** — Roblox engine runs underneath.
 
-## Features
-- Material You dynamic color (Android 12+)
-- Animated splash screen
-- Download & install Roblox directly from Delta
-- Live download progress bar
-- Installed version detection
-- GitHub Actions CI/CD — auto-release on tag push
+## How it works
 
-## Build
-
-```bash
-./gradlew assembleDebug
 ```
+GitHub Actions
+  ↓ downloads Delta-2.736 APK
+  ↓ apktool decode
+  ↓ inject.py:
+      • strips LAUNCHER intent from original activity
+      • injects HaloActivity.smali + HaloBridge.smali
+      • copies patch/assets/halo/index.html into assets
+      • patches AndroidManifest.xml
+  ↓ apktool rebuild
+  ↓ zipalign + apksigner
+  ↓ upload artifact / GitHub Release
+```
+
+## Repo structure
+
+```
+patch/
+  smali/com/roblox/client/halo/
+    HaloActivity.smali   ← WebView activity (the launcher shell)
+    HaloBridge.smali     ← JS bridge: Android.launchGame(placeId)
+  assets/halo/
+    index.html           ← Full Halo launcher UI (HTML/CSS/JS)
+  inject.py              ← Orchestrates the patch
+.github/workflows/
+  build.yml              ← Debug build on push
+  release.yml            ← Signed release on tag push
+```
+
+## Build (debug)
+
+Push to `main` or `dev` — Actions builds automatically.  
+Download the APK from the workflow's Artifacts tab.
 
 ## Release
 
@@ -23,26 +46,15 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-GitHub Actions handles the rest — builds, signs, uploads APK as a GitHub Release.
+Actions builds, signs, and publishes a GitHub Release.
 
-## Secrets required (Settings → Secrets → Actions)
+## Secrets (for release signing)
 
 | Secret | Value |
 |---|---|
-| `SIGNING_KEY_BASE64` | `base64 -w 0 halo.keystore` |
+| `SIGNING_KEY_BASE64` | `base64 -w0 release.keystore` |
 | `KEY_ALIAS` | your alias |
-| `KEYSTORE_PASSWORD` | your password |
-| `KEY_PASSWORD` | your key password |
+| `KEYSTORE_PASSWORD` | store password |
+| `KEY_PASSWORD` | key password |
 
-## Generate keystore
-
-```bash
-keytool -genkey -v -keystore halo.keystore \
-  -alias halo -keyalg RSA -keysize 2048 -validity 10000
-
-base64 -w 0 halo.keystore
-```
-
----
-
-Powered by Delta ☠️
+> ☠️ Package name `com.roblox.client` is never modified.
